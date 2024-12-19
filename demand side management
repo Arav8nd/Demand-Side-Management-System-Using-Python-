@@ -1,0 +1,71 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+a = np.array([0.01, 0.02, 0.015])
+b = np.array([1.2, 1.0, 1.5])
+c = np.array([20, 15, 30])
+P_min = np.array([10, 10, 15])
+P_max = np.array([100, 80, 90])
+demand = 150
+
+num_particles = 50
+num_iterations = 100
+w = 0.5
+c1, c2 = 1.5, 1.5
+
+positions = np.random.uniform(P_min, P_max, (num_particles, len(P_min)))
+velocities = np.zeros_like(positions)
+
+def cost_function(P):
+    total_cost = np.sum(a * P**2 + b * P + c)
+    return total_cost
+
+def fitness_function(P):
+    total_cost = cost_function(P)
+    if np.sum(P) < demand:
+        total_cost += 1e6
+    return total_cost
+
+pbest = positions.copy()
+pbest_cost = np.array([fitness_function(P) for P in positions])
+gbest = pbest[np.argmin(pbest_cost)]
+gbest_cost = np.min(pbest_cost)
+
+best_cost_list = []
+
+for t in range(num_iterations):
+    for i in range(num_particles):
+        r1, r2 = np.random.rand(), np.random.rand()
+        velocities[i] = (w * velocities[i] +
+                         c1 * r1 * (pbest[i] - positions[i]) +
+                         c2 * r2 * (gbest - positions[i]))
+        positions[i] += velocities[i]
+        positions[i] = np.clip(positions[i], P_min, P_max)
+        fitness = fitness_function(positions[i])
+        if fitness < pbest_cost[i]:
+            pbest[i] = positions[i]
+            pbest_cost[i] = fitness
+    if np.min(pbest_cost) < gbest_cost:
+        gbest = pbest[np.argmin(pbest_cost)]
+        gbest_cost = np.min(pbest_cost)
+    best_cost_list.append(gbest_cost)
+    print(f"Iteration {t+1}, Best Cost: {gbest_cost}")
+
+print(f"Optimal Power Generation: {gbest}")
+print(f"Minimum Cost: {gbest_cost}")
+
+plt.figure(figsize=(10, 6))
+plt.plot(best_cost_list, label='Best Cost Over Iterations')
+plt.title('Convergence of PSO: Best Cost vs Iterations')
+plt.xlabel('Iterations')
+plt.ylabel('Best Cost')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+plt.figure(figsize=(8, 5))
+generators = ['Generator 1', 'Generator 2', 'Generator 3']
+plt.bar(generators, gbest, color=['blue', 'green', 'red'])
+plt.title('Optimal Power Generation Distribution')
+plt.ylabel('Power Generated (MW)')
+plt.show()
